@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Evolution Simulations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #4CAF50, #2196F3, #FF9800, #E91E63);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 1.2em;
+            color: #aaa;
+            margin-bottom: 50px;
+        }
+        
+        .simulations {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .sim-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .sim-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .sim-card.base:hover { border-color: #888; }
+        .sim-card.genetic:hover { border-color: #4CAF50; }
+        .sim-card.gametheory:hover { border-color: #2196F3; }
+        .sim-card.cultural:hover { border-color: #FF9800; }
+        .sim-card.hybrid:hover { border-color: #E91E63; }
+        
+        .sim-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .sim-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .sim-description {
+            font-size: 0.9em;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+        
+        .sim-features {
+            list-style: none;
+            font-size: 0.85em;
+            color: #aaa;
+        }
+        
+        .sim-features li {
+            padding: 3px 0;
+        }
+        
+        .sim-features li:before {
+            content: "• ";
+            color: #4CAF50;
+        }
+        
+        .info-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+        
+        .info-section h2 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+        
+        .info-section p {
+            line-height: 1.8;
+            color: #ccc;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .badge.new { background: #4CAF50; color: white; }
+        .badge.complex { background: #FF9800; color: white; }
+        .badge.advanced { background: #E91E63; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦠 Swarm Evolution Simulations</h1>
+        <p class="subtitle">Explore different evolution models in agent-based systems</p>
+        
+        <div class="simulations">
+            <a href="index.html" class="sim-card base">
+                <div class="sim-icon">⚪</div>
+                <div class="sim-title">Base Simulation</div>
+                <div class="sim-description">
+                    The original swarm opinion dynamics without evolution. Watch agents interact through flocking and opinion exchange.
+                </div>
+                <ul class="sim-features">
+                    <li>Flocking behavior (Reynolds rules)</li>
+                    <li>Opinion dynamics</li>
+                    <li>3 agent types: Honest, Liar, Stubborn</li>
+                    <li>Color-based belief visualization</li>
+                </ul>
+            </a>
+            
+            <a href="index-genetic.html" class="sim-card genetic">
+                <div class="sim-icon">🧬</div>
+                <div class="sim-title">Genetic Evolution</div>
+                <div class="sim-description">
+                    Agents evolve through natural selection. Successful strategies reproduce and mutate over generations.
+                </div>
+                <ul class="sim-features">
+                    <li>Genome-based traits</li>
+                    <li>Fitness-based selection</li>
+                    <li>Reproduction with crossover</li>
+                    <li>Mutation and adaptation</li>
+                </ul>
+                <span class="badge new">STANDALONE</span>
+            </a>
+            
+            <a href="index-gametheory.html" class="sim-card gametheory">
+                <div class="sim-icon">🎮</div>
+                <div class="sim-title">Game Theory</div>
+                <div class="sim-description">
+                    Strategic interactions with payoff matrices. Agents accumulate fitness through cooperation and competition.
+                </div>
+                <ul class="sim-features">
+                    <li>Payoff matrix interactions</li>
+                    <li>Strategy emergence</li>
+                    <li>Nash equilibria dynamics</li>
+                    <li>Fitness tracking</li>
+                </ul>
+                <span class="badge new">STANDALONE</span>
+            </a>
+            
+            <a href="index-cultural.html" class="sim-card cultural">
+                <div class="sim-icon">🧠</div>
+                <div class="sim-title">Cultural Evolution</div>
+                <div class="sim-description">
+                    Belief transmission through persuasion and social learning. Ideas evolve faster than genes.
+                </div>
+                <ul class="sim-features">
+                    <li>Belief strength dynamics</li>
+                    <li>Memetic transmission</li>
+                    <li>Social learning</li>
+                    <li>Cultural memory</li>
+                </ul>
+                <span class="badge new">STANDALONE</span>
+            </a>
+            
+            <a href="index-hybrid.html" class="sim-card hybrid">
+                <div class="sim-icon">🌟</div>
+                <div class="sim-title">Hybrid Evolution</div>
+                <div class="sim-description">
+                    All three systems combined! Genetic, game theory, and cultural evolution working together.
+                </div>
+                <ul class="sim-features">
+                    <li>Multi-timescale dynamics</li>
+                    <li>Gene-culture coevolution</li>
+                    <li>Baldwin effect</li>
+                    <li>Complex emergent behavior</li>
+                </ul>
+                <span class="badge advanced">COMBINED</span>
+            </a>
+        </div>
+        
+        <div class="info-section">
+            <h2>📊 About the Simulations</h2>
+            <p>
+                Each simulation is <strong>independently deployable</strong> - you can run them separately or combine them to create complex evolutionary dynamics. The modular architecture allows you to experiment with different evolution mechanisms and compare their effects on agent behavior and population dynamics.
+            </p>
+            <p style="margin-top: 15px;">
+                <strong>Key Features:</strong> All simulations include adjustable parameters, real-time statistics, and visual feedback. The hybrid mode demonstrates how different evolutionary pressures interact to produce rich, emergent behavior.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,70 @@
+html, body {
+  margin: 0; padding: 0; overflow: hidden;
+  background-color: #080808;
+}
+
+canvas { display: block; }
+
+.ui-panel {
+  position: absolute;
+  background: rgba(22, 22, 28, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #f0f0f0;
+  font-family: 'Courier New', Courier, monospace;
+  z-index: 999;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+}
+
+.panel-header {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 15px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: grab;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+  text-align: center;
+  color: #4CAF50;
+}
+
+.panel-header:active { cursor: grabbing; }
+
+.panel-content { padding: 18px; }
+
+.manual-input {
+  width: 55px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #4CAF50;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.action-btn {
+  width: 100%; padding: 10px; border: none; border-radius: 8px;
+  color: white; font-weight: bold; cursor: pointer; margin-top: 10px;
+}
+
+.reset { background: #27ae60; }
+.record { background: #e67e22; }
+
+input[type=range] { width: 100%; accent-color: #4CAF50; margin-top: 8px; }
+
+p { margin: 8px 0; font-size: 13px; }
+
+select {
+  width: 100%;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #4CAF50;
+  font-size: 11px;
+  font-weight: bold;
+  margin-top: 8px;
+  cursor: pointer;
+}

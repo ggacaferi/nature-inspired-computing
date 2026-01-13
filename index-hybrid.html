@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Evolution - Swarm Simulation</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    
+    <!-- All Evolution Modules -->
+    <script src="evolutionGenetic.js"></script>
+    <script src="evolutionGameTheory.js"></script>
+    <script src="evolutionCultural.js"></script>
+    <script src="evolutionHybrid.js"></script>
+    <script src="evolutionTester.js"></script>
+    
+    <!-- Main Sketch -->
+    <script src="sketch.js"></script>
+    <script>
+        // Configure to use hybrid evolution (all three combined)
+        window.evolutionMode = 'hybrid';
+    </script>
+</head>
+<body>
+    <main>
+        <div id="ui-layer">
+            <h1>🌟 Hybrid Evolution System</h1>
+            <p style="font-size: 11px;">
+                Combines genetic algorithms, game theory, and cultural evolution for complex emergent behavior.
+            </p>
+        </div>
+    </main>
+</body>
+</html>

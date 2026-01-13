@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cultural Evolution - Swarm Simulation</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    
+    <!-- All Evolution Modules (for dynamic switching) -->
+    <script src="evolutionGenetic.js"></script>
+    <script src="evolutionGameTheory.js"></script>
+    <script src="evolutionCultural.js"></script>
+    <script src="evolutionHybrid.js"></script>
+    <script src="evolutionTester.js"></script>
+    
+    <!-- Main Sketch -->
+    <script src="sketch.js"></script>
+    <script>
+        // Configure to use only cultural evolution
+        window.evolutionMode = 'cultural';
+    </script>
+</head>
+<body>
+    <main>
+        <div id="ui-layer">
+            <h1>🧠 Cultural Evolution</h1>
+            <p style="font-size: 11px;">
+                Agents transmit beliefs through persuasion and social learning.
+            </p>
+        </div>
+    </main>
+</body>
+</html>
