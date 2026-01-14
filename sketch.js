@@ -187,7 +187,7 @@ function buildConfigUI(parent) {
   // Evolution mode selector
   let modeLabel = createP('Evolution Mode:').parent(parent).style('margin', '0 0 5px 0').style('font-size', '11px');
   
-  let modeSelector = createSelect().parent(parent);
+  let modeSelector = createSelect().parent(parent).class('glass-select');
   modeSelector.option('None (Base)', 'none');
   modeSelector.option('Genetic Evolution', 'genetic');
   modeSelector.option('Game Theory', 'gametheory');

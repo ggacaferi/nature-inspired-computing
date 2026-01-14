@@ -7,23 +7,24 @@ canvas { display: block; }
 
 .ui-panel {
   position: absolute;
-  background: rgba(22, 22, 28, 0.92);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 15, 20, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   color: #f0f0f0;
   font-family: 'Courier New', Courier, monospace;
   z-index: 999;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 
 .panel-header {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   padding: 10px 15px;
   font-size: 11px;
   font-weight: bold;
   cursor: grab;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   user-select: none;
   text-align: center;
   color: #4CAF50;
@@ -31,12 +32,15 @@ canvas { display: block; }
 
 .panel-header:active { cursor: grabbing; }
 
-.panel-content { padding: 18px; }
+.panel-content { 
+  padding: 18px;
+  background: transparent;
+}
 
 .manual-input {
   width: 55px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   color: #4CAF50;
   text-align: center;
@@ -56,15 +60,48 @@ input[type=range] { width: 100%; accent-color: #4CAF50; margin-top: 8px; }
 
 p { margin: 8px 0; font-size: 13px; }
 
-select {
+/* Glassmorphism Select Dropdown */
+select, .glass-select {
   width: 100%;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
   color: #4CAF50;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: bold;
-  margin-top: 8px;
+  margin-top: 0px;
+  margin-bottom: 8px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Courier New', Courier, monospace;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234CAF50' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 35px;
+}
+
+select:hover, .glass-select:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(76, 175, 80, 0.4);
+  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+select:focus, .glass-select:focus {
+  outline: none;
+  border-color: rgba(76, 175, 80, 0.6);
+  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+select option {
+  background: #1a1a1f;
+  color: #4CAF50;
+  padding: 12px;
+  font-family: 'Courier New', Courier, monospace;
 }
