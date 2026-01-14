@@ -69,16 +69,29 @@ class HybridEvolution {
     }
     
     // Genetic evolution (handles reproduction & selection)
-    agents = this.genetic.evolvePopulation(agents);
+    const evolvedAgents = this.genetic.evolvePopulation(agents);
     
-    // Re-initialize cultural properties for new agents
-    for (let agent of agents) {
+    // If genetic evolution returned new agents (new generation), ensure ALL properties are initialized
+    if (Array.isArray(evolvedAgents) && evolvedAgents !== agents) {
+      for (let agent of evolvedAgents) {
+        // Initialize ALL hybrid system properties from scratch
+        this.gameTheory.initializeAgent(agent);
+        this.cultural.initializeAgent(agent);
+      }
+      return evolvedAgents;
+    }
+    
+    // Otherwise just ensure existing agents have all properties
+    for (let agent of evolvedAgents) {
+      if (!agent.payoffHistory) {
+        this.gameTheory.initializeAgent(agent);
+      }
       if (agent.beliefStrength === undefined) {
         this.cultural.initializeAgent(agent);
       }
     }
     
-    return agents;
+    return evolvedAgents;
   }
   
   // Get combined statistics
@@ -91,6 +104,12 @@ class HybridEvolution {
       gameTheory: this.gameTheory.getPopulationStats(agents),
       cultural: this.cultural.getPopulationStats(agents)
     };
+  }
+  
+  // Reset all systems (called on system reset)
+  reset() {
+    this.genetic.reset();
+    // gameTheory and cultural don't have explicit state to reset
   }
   
   // Get UI controls

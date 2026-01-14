@@ -14,9 +14,27 @@ class GeneticEvolution {
   
   // Initialize genome for new agent
   initializeGenome(agent) {
+    // Initialize genome traits based on agent's initial type
+    let honestyLevel;
+    let stubbornness;
+    
+    if (agent.type === AGENT_TYPE.HONEST) {
+      // Honest agents start with high honesty (0.6-1.0)
+      honestyLevel = random(0.6, 1.0);
+      stubbornness = random(0, 0.3);
+    } else if (agent.type === AGENT_TYPE.LIAR) {
+      // Liars start with low honesty (0.0-0.4)
+      honestyLevel = random(0, 0.4);
+      stubbornness = random(0, 0.5);
+    } else if (agent.type === AGENT_TYPE.STUBBORN) {
+      // Stubborn agents start with high stubbornness (0.8-1.0)
+      honestyLevel = random(0, 1);
+      stubbornness = random(0.8, 1.0);
+    }
+    
     agent.genome = {
-      honestyLevel: random(0, 1),
-      stubbornness: random(0, 1),
+      honestyLevel: honestyLevel,
+      stubbornness: stubbornness,
       influenceStrength: random(0, 1),
       trustThreshold: random(0, 1)
     };
@@ -48,6 +66,12 @@ class GeneticEvolution {
   // Alias for consistency with other evolution modules
   initializeAgent(agent) {
     this.initializeGenome(agent);
+  }
+  
+  // Reset generation counter (called on system reset)
+  reset() {
+    this.frameCount = 0;
+    this.generationNumber = 0;
   }
   
   // Update agent each frame
@@ -165,11 +189,11 @@ class GeneticEvolution {
   }
   
   // Reproduce two agents
-  reproduce(parent1, parent2) {
+  reproduce(parent1, parent2, evolutionSystem = null) {
     const x = random(width);
     const y = random(height);
-    // Create child with inherited genome (we'll set color from genome below)
-    const child = new Agent(x, y, parent1.type);
+    // Create child - start as HONEST by default, genome will determine actual type/color below
+    const child = new Agent(x, y, AGENT_TYPE.HONEST);
     
     // Crossover: randomly pick genes from each parent
     child.genome = {

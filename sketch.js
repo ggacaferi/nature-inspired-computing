@@ -225,7 +225,13 @@ function buildConfigUI(parent) {
   createSliderWithInput('cohesionWeight', 'Cohesion', 0, 3, params.cohesionWeight, parent);
 
   let resetBtn = createButton('RESET SYSTEM').parent(parent).class('action-btn reset');
-  resetBtn.mousePressed(() => { history = []; initializeAgents(); });
+  resetBtn.mousePressed(() => { 
+    history = []; 
+    if (evolutionSystem && typeof evolutionSystem.reset === 'function') {
+      evolutionSystem.reset();
+    }
+    initializeAgents(); 
+  });
 
   let logBtn = createButton('⏺ RECORD DATA').parent(parent).class('action-btn record');
   logBtn.mousePressed(() => {
