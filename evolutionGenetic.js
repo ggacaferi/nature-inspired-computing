@@ -22,11 +22,29 @@ class GeneticEvolution {
     };
     agent.fitness = 0;
     agent.age = 0;
-    
-    // Apply genome to set initial behavior
-    this.applyGenomeToBehavior(agent);
+    this.applyGenomeToState(agent);
   }
   
+  // Apply an EXISTING genome to the agent's state (color/type/behavior).
+  // This is used both for initial random genomes and inherited child genomes.
+  applyGenomeToState(agent) {
+    if (!agent.genome) return;
+
+    // honestyLevel → belief color (truth green, lie red)
+    const truthColor = color(60, 220, 60);
+    const lieColor = color(220, 60, 60);
+    agent.color = lerpColor(lieColor, truthColor, agent.genome.honestyLevel);
+
+    // High stubbornness → born stubborn (locks type)
+    if (agent.genome.stubbornness > 0.8) {
+      agent.type = AGENT_TYPE.STUBBORN;
+      agent.fixedColor = agent.color;
+    }
+
+    // Non-visual behavioral traits (learning rate, belief strength)
+    this.applyGenomeToBehavior(agent);
+  }
+
   // Alias for consistency with other evolution modules
   initializeAgent(agent) {
     this.initializeGenome(agent);
@@ -44,23 +62,10 @@ class GeneticEvolution {
   
   // Apply genome traits to agent behavior
   applyGenomeToBehavior(agent) {
-    // Genome determines type - types are MUTABLE based on genes
-    if (agent.genome.honestyLevel < 0.33) {
-      agent.type = AGENT_TYPE.LIAR;
-    } else if (agent.genome.honestyLevel > 0.66 && agent.genome.stubbornness > 0.7) {
-      agent.type = AGENT_TYPE.STUBBORN;
-    } else {
-      agent.type = AGENT_TYPE.HONEST;
-    }
-    
-    // Stubbornness affects learning rate and belief strength
+    // Stubbornness affects learning rate and belief strength.
+    // Higher stubbornness → slower learning but stronger conviction.
     agent.learningRate = 0.3 * (1 - agent.genome.stubbornness);
     agent.beliefStrength = agent.genome.stubbornness;
-    
-    // Update fixed color for stubborn agents
-    if (agent.type === AGENT_TYPE.STUBBORN) {
-      agent.fixedColor = agent.color;
-    }
   }
   
   // Process interaction between agents (handles color communication)
@@ -163,10 +168,8 @@ class GeneticEvolution {
   reproduce(parent1, parent2) {
     const x = random(width);
     const y = random(height);
-    const col = lerpColor(color(parent1.color), color(parent2.color), 0.5);
-    
-    // Create child with inherited genome
-    const child = new Agent(x, y, parent1.type, col);
+    // Create child with inherited genome (we'll set color from genome below)
+    const child = new Agent(x, y, parent1.type);
     
     // Crossover: randomly pick genes from each parent
     child.genome = {
@@ -178,6 +181,13 @@ class GeneticEvolution {
     
     // Mutation
     this.mutate(child.genome);
+
+    // Apply the inherited genome to set initial behavior & belief color
+    // (do NOT re-randomize the genome here)
+    this.applyGenomeToState(child);
+    
+    // Set generation number for this child
+    child.generation = this.generationNumber;
     
     child.fitness = 0;
     child.age = 0;

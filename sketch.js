@@ -8,7 +8,11 @@ let params = {
   proximityRadius: 45,
   interactionTime: 20,
   maxSpeed: 2.5,
-  maxForce: 0.1
+  maxForce: 0.1,
+  // Flocking weights (Craig Reynolds rules)
+  separationWeight: 1.5,
+  alignmentWeight: 1.0,
+  cohesionWeight: 1.0
 };
 
 let stats = { honest: 0, liars: 0, stubborn: 0 };
@@ -97,7 +101,13 @@ function draw() {
   
   // Evolve population periodically
   if (evolutionSystem && typeof evolutionSystem.evolvePopulation === 'function') {
-    evolutionSystem.evolvePopulation(agents);
+    const evolvedAgents = evolutionSystem.evolvePopulation(agents);
+    // Some evolution systems (genetic) return a NEW agents array when generation completes
+    if (Array.isArray(evolvedAgents) && evolvedAgents !== agents) {
+      agents = evolvedAgents;
+      // Keep window references in sync for tester & console debugging
+      window.agents = agents;
+    }
   }
 
   if (isLogging) {
@@ -153,14 +163,22 @@ function createPanel(title, x, y, w) {
     header.style('cursor', 'grabbing');
   };
 
-  window.onmousemove = (e) => {
-    if (dragging) panel.position(e.clientX - offset.x, e.clientY - offset.y);
+  // Per-panel mouse handlers so all menus can be moved independently
+  const onMouseMove = (e) => {
+    if (dragging) {
+      panel.position(e.clientX - offset.x, e.clientY - offset.y);
+    }
   };
 
-  window.onmouseup = () => {
-    dragging = false;
-    header.style('cursor', 'grab');
+  const onMouseUp = () => {
+    if (dragging) {
+      dragging = false;
+      header.style('cursor', 'grab');
+    }
   };
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
 
   return { panel, header, content };
 }
@@ -182,11 +200,16 @@ function buildConfigUI(parent) {
     history = [];
     initializeAgents();
   });
-  
+
   createSliderWithInput('numAgents', 'Population', 20, 400, params.numAgents, parent);
   createSliderWithInput('liarsPercent', 'Liars %', 0, 100, params.liarsPercent, parent);
   createSliderWithInput('stubbornPercent', 'Stubborn %', 0, 100, params.stubbornPercent, parent);
   createSliderWithInput('proximityRadius', 'Signal Range', 10, 150, params.proximityRadius, parent);
+
+  // Flocking controls
+  createSliderWithInput('separationWeight', 'Separation', 0, 3, params.separationWeight, parent);
+  createSliderWithInput('alignmentWeight', 'Alignment', 0, 3, params.alignmentWeight, parent);
+  createSliderWithInput('cohesionWeight', 'Cohesion', 0, 3, params.cohesionWeight, parent);
 
   let resetBtn = createButton('RESET SYSTEM').parent(parent).class('action-btn reset');
   resetBtn.mousePressed(() => { history = []; initializeAgents(); });
@@ -280,7 +303,6 @@ function updateBeliefsUI() {
   // Categorize agents by truth vs lies
   let truthBelievers = [];
   let lieBelievers = [];
-  let extremists = [];
   
   for (let agent of agents) {
     let r = red(agent.color);
@@ -304,10 +326,8 @@ function updateBeliefsUI() {
       saturation: saturation
     };
     
-    // Extremists: stubborn agents OR highly saturated beliefs
-    if (agent.type === AGENT_TYPE.STUBBORN || saturation > 0.6) {
-      extremists.push(belief);
-    } else if (truthScore > lieScore) {
+    // Classify purely as truth vs lies (no extremist category)
+    if (truthScore > lieScore) {
       truthBelievers.push(belief);
     } else {
       lieBelievers.push(belief);
@@ -342,21 +362,6 @@ function updateBeliefsUI() {
       </div>
       <div style="padding-left:30px; opacity:0.85; font-size:9px;">
         Agents deceived by liars. Red tint shows inverted/false beliefs spread by dishonest agents.
-      </div>
-    </div>`;
-  }
-  
-  // Extremists
-  if (extremists.length > 0) {
-    let sample = extremists[floor(extremists.length / 2)];
-    let isExtremeTruth = green(sample.color) > red(sample.color);
-    html += `<div style="margin-bottom:10px;">
-      <div style="display:flex; align-items:center; margin-bottom:4px;">
-        <div style="width:22px; height:22px; background:rgb(${red(sample.color)},${green(sample.color)},${blue(sample.color)}); border:1px solid #444; margin-right:8px;"></div>
-        <span style="font-weight:bold; color:#FF9800;">EXTREMISTS (${extremists.length})</span>
-      </div>
-      <div style="padding-left:30px; opacity:0.85; font-size:9px;">
-        Stubborn agents with unwavering beliefs. ${isExtremeTruth ? 'Extreme truth believers' : 'Extreme lie believers'} refusing to change.
       </div>
     </div>`;
   }
@@ -402,6 +407,8 @@ function createSliderWithInput(key, label, min, max, value, parent) {
 
 function initializeAgents() {
   agents = [];
+  // Reset agent id counter so ids are stable across resets
+  Agent._nextId = 0;
   let id = 0;
   let nL = floor(params.numAgents * params.liarsPercent / 100);
   let nS = floor(params.numAgents * params.stubbornPercent / 100);
@@ -435,6 +442,21 @@ function updateStats() {
 
 class Agent {
   constructor(id, x, y, type) {
+    // Support both call styles:
+    // - new Agent(id, x, y, type)  (used by base initializeAgents)
+    // - new Agent(x, y, type)      (used by evolution modules creating children)
+    if (type === undefined) {
+      // called as (x, y, type)
+      type = y;
+      y = x;
+      x = id;
+      if (Agent._nextId === undefined) Agent._nextId = 0;
+      id = Agent._nextId++;
+    } else {
+      if (Agent._nextId === undefined) Agent._nextId = 0;
+      Agent._nextId = Math.max(Agent._nextId, id + 1);
+    }
+
     this.id = id;
     this.pos = createVector(x, y);
     this.vel = p5.Vector.random2D().mult(random(1, 2));
@@ -466,6 +488,7 @@ class Agent {
     
     this.fitness = 0;
     this.beliefStrength = random(0.5, 1.0);
+    this.generation = 0; // Track which generation this agent belongs to
   }
 
   update() {
@@ -478,11 +501,39 @@ class Agent {
     if (this.pos.x > width) this.pos.x = 0;
     if (this.pos.y < 0) this.pos.y = height;
     if (this.pos.y > height) this.pos.y = 0;
+
+    // Update agent type based on current belief:
+    // - Truth (more green) → HONEST
+    // - Lie (more red) → LIAR
+    // Stubborn agents keep their special type.
+    if (this.type !== AGENT_TYPE.STUBBORN) {
+      const r = red(this.color);
+      const g = green(this.color);
+      const epsilon = 5; // small buffer to avoid rapid flipping on noise
+
+      if (g > r + epsilon) {
+        this.type = AGENT_TYPE.HONEST;
+      } else if (r > g + epsilon) {
+        this.type = AGENT_TYPE.LIAR;
+      }
+    }
   }
 
   flock(agents) {
-    let sep = this.separate(agents).mult(2);
+    // Craig Reynolds style flocking:
+    // - separation: avoid crowding neighbors
+    // - alignment: steer toward average heading
+    // - cohesion: move toward local center of mass
+    //
+    // Strength of each behavior is controlled by sliders in the SWARM CONFIG panel.
+
+    const sep = this.separate(agents).mult(params.separationWeight);
+    const ali = this.alignment(agents).mult(params.alignmentWeight);
+    const coh = this.cohesion(agents).mult(params.cohesionWeight);
+
     this.acc.add(sep);
+    this.acc.add(ali);
+    this.acc.add(coh);
   }
 
   separate(agents) {
@@ -502,6 +553,53 @@ class Agent {
       steer.div(count).normalize().mult(this.maxSpeed).sub(this.vel).limit(this.maxForce);
     }
     return steer;
+  }
+
+  // Steer toward the average heading of local neighbors
+  alignment(agents) {
+    const neighborDist = this.proximityRadius;
+    let sum = createVector(0, 0);
+    let count = 0;
+
+    for (let other of agents) {
+      const d = p5.Vector.dist(this.pos, other.pos);
+      if (d > 0 && d < neighborDist) {
+        sum.add(other.vel);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      sum.div(count).setMag(this.maxSpeed);
+      const steer = p5.Vector.sub(sum, this.vel).limit(this.maxForce);
+      return steer;
+    }
+    return createVector(0, 0);
+  }
+
+  // Steer toward the center of mass of local neighbors
+  cohesion(agents) {
+    const neighborDist = this.proximityRadius;
+    let sum = createVector(0, 0);
+    let count = 0;
+
+    for (let other of agents) {
+      const d = p5.Vector.dist(this.pos, other.pos);
+      if (d > 0 && d < neighborDist) {
+        sum.add(other.pos);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      sum.div(count);
+      // Seek towards this point
+      let desired = p5.Vector.sub(sum, this.pos);
+      desired.setMag(this.maxSpeed);
+      const steer = p5.Vector.sub(desired, this.vel).limit(this.maxForce);
+      return steer;
+    }
+    return createVector(0, 0);
   }
 
   interact(agents) {
@@ -556,12 +654,9 @@ class Agent {
   }
   
   getTransmittedColor() {
-    // Liars invert what they believe before transmitting (they lie)
-    if (this.type === AGENT_TYPE.LIAR) {
-      let c = color(this.color);
-      return color(255 - red(c), 255 - green(c), 255 - blue(c));
-    }
-    // Honest and Stubborn transmit their actual belief
+    // All agents transmit the belief they currently hold:
+    // - Truth believers: green-ish colors
+    // - Lie believers: red-ish colors
     return this.color;
   }
 
@@ -581,6 +676,23 @@ class Agent {
       ellipse(0, 0, this.r*2, this.r*2);
     }
     pop();
+    
+    // Display generation number above agent (only in genetic or hybrid modes)
+    if ((evolutionMode === 'genetic' || evolutionMode === 'hybrid') && 
+        this.generation !== undefined && this.generation !== null) {
+      push();
+      // Draw background circle for better visibility
+      fill(0, 150);
+      noStroke();
+      ellipse(this.pos.x, this.pos.y - this.r - 10, 16, 16);
+      // Draw generation number
+      fill(255, 255);
+      textAlign(CENTER, CENTER);
+      textSize(12);
+      textStyle(BOLD);
+      text(this.generation, this.pos.x, this.pos.y - this.r - 10);
+      pop();
+    }
     
     if (selectedAgent === this) {
       noFill(); stroke(255, 255, 0); strokeWeight(2);

@@ -64,7 +64,9 @@ class HybridEvolution {
     if (!this.enabled) return agents;
     
     // Update game theory decay
-    this.gameTheory.update(agents);
+    for (let agent of agents) {
+      this.gameTheory.update(agent, agents);
+    }
     
     // Genetic evolution (handles reproduction & selection)
     agents = this.genetic.evolvePopulation(agents);
