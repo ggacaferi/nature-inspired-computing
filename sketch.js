@@ -1,3 +1,7 @@
+/*
+ *   Copyright (c) 2026 
+ *   All rights reserved.
+ */
 const AGENT_TYPE = { HONEST: 0, LIAR: 1, STUBBORN: 2 };
 
 let agents = [];
@@ -52,7 +56,15 @@ function setup() {
  
   panels.stats = createPanel('LIVE POPULATION STATS', 20, windowHeight - 180, '220px');
 
-  panels.graph = createPanel('OPINION TRENDS', windowWidth / 2 - 150, windowHeight - 220, '300px');
+  panels.graph = createPanel('OPINION TRENDS', windowWidth / 2 - 175, windowHeight - 200, '350px');
+  // Add a canvas inside the graph panel for drawing lines
+  let graphCanvas = document.createElement('canvas');
+  graphCanvas.id = 'graphCanvas';
+  graphCanvas.width = 320;
+  graphCanvas.height = 120;
+  graphCanvas.style.borderRadius = '8px';
+  graphCanvas.style.background = 'rgba(10, 10, 15, 0.5)';
+  panels.graph.content.elt.appendChild(graphCanvas);
   
   panels.beliefs = createPanel('BELIEF ANALYSIS', windowWidth - 340, windowHeight - 280, '320px');
 
@@ -142,8 +154,9 @@ function initializeEvolutionSystem() {
 }
 
 // --- PANEL MANAGER (MOVABLE & MINIMIZABLE) ---
-function createPanel(title, x, y, w) {
+function createPanel(title, x, y, w, h) {
   let panel = createDiv().class('ui-panel').position(x, y).style('width', w);
+  if (h) panel.style('height', h);
   let header = createDiv(title).class('panel-header').parent(panel);
   let content = createDiv().class('panel-content').parent(panel);
  
@@ -234,38 +247,46 @@ function updateHistory() {
 
 function drawGraphLines() {
   if (panels.graph.content.style('display') === 'none') return;
- 
-  let x = panels.graph.panel.elt.offsetLeft + 15;
-  let y = panels.graph.panel.elt.offsetTop + 55;
-  let w = 270;
-  let h = 80;
-
-  push();
-  fill(5, 150); stroke(255, 20); rect(x-5, y-5, w+10, h+10, 5);
- 
-  noFill();
-  strokeWeight(2);
- 
-  // Honest (Green)
-  stroke(50, 255, 100);
-  beginShape();
+  
+  let canvas = document.getElementById('graphCanvas');
+  if (!canvas) return;
+  
+  let ctx = canvas.getContext('2d');
+  let w = canvas.width;
+  let h = canvas.height;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, w, h);
+  
+  // Draw background
+  ctx.fillStyle = 'rgba(10, 10, 15, 0.5)';
+  ctx.fillRect(0, 0, w, h);
+  
+  if (history.length < 2) return;
+  
+  // Draw Honest line (Green)
+  ctx.strokeStyle = 'rgb(50, 255, 100)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
   for (let i = 0; i < history.length; i++) {
-    let px = map(i, 0, maxHistory, x, x + w);
-    let py = map(history[i].h, 0, params.numAgents, y + h, y);
-    vertex(px, py);
+    let px = (i / maxHistory) * w;
+    let py = h - (history[i].h / params.numAgents) * h;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
-  endShape();
-
-  // Liars (Red)
-  stroke(255, 50, 50);
-  beginShape();
+  ctx.stroke();
+  
+  // Draw Liars line (Red)
+  ctx.strokeStyle = 'rgb(255, 50, 50)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
   for (let i = 0; i < history.length; i++) {
-    let px = map(i, 0, maxHistory, x, x + w);
-    let py = map(history[i].l, 0, params.numAgents, y + h, y);
-    vertex(px, py);
+    let px = (i / maxHistory) * w;
+    let py = h - (history[i].l / params.numAgents) * h;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
-  endShape();
-  pop();
+  ctx.stroke();
 }
 
 function updateInspectorUI() {
@@ -704,3 +725,4 @@ class Agent {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
+
