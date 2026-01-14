@@ -2,9 +2,9 @@ const AGENT_TYPE = { HONEST: 0, LIAR: 1, STUBBORN: 2 };
 
 let agents = [];
 let params = {
-  numAgents: 150,
-  liarsPercent: 15,
-  stubbornPercent: 10,
+  numHonest: 112,
+  numLiars: 23,
+  numStubborn: 15,
   proximityRadius: 45,
   interactionTime: 20,
   maxSpeed: 2.5,
@@ -57,6 +57,9 @@ function setup() {
   panels.beliefs = createPanel('BELIEF ANALYSIS', windowWidth - 340, windowHeight - 280, '320px');
 
   initializeAgents();
+  
+  // Expose params globally for evolution modules
+  window.params = params;
 }
 
 function draw() {
@@ -201,9 +204,9 @@ function buildConfigUI(parent) {
     initializeAgents();
   });
 
-  createSliderWithInput('numAgents', 'Population', 20, 400, params.numAgents, parent);
-  createSliderWithInput('liarsPercent', 'Liars %', 0, 100, params.liarsPercent, parent);
-  createSliderWithInput('stubbornPercent', 'Stubborn %', 0, 100, params.stubbornPercent, parent);
+  createSliderWithInput('numHonest', 'Honest Count', 0, 300, params.numHonest, parent);
+  createSliderWithInput('numLiars', 'Liars Count', 0, 300, params.numLiars, parent);
+  createSliderWithInput('numStubborn', 'Stubborn Count', 0, 300, params.numStubborn, parent);
   createSliderWithInput('proximityRadius', 'Signal Range', 10, 150, params.proximityRadius, parent);
 
   // Flocking controls
@@ -212,7 +215,22 @@ function buildConfigUI(parent) {
   createSliderWithInput('cohesionWeight', 'Cohesion', 0, 3, params.cohesionWeight, parent);
 
   let resetBtn = createButton('RESET SYSTEM').parent(parent).class('action-btn reset');
-  resetBtn.mousePressed(() => { history = []; initializeAgents(); });
+  resetBtn.mousePressed(() => { 
+    history = []; 
+    // Reset generation counters in evolution systems
+    if (evolutionSystem) {
+      if (evolutionSystem.generationNumber !== undefined) {
+        evolutionSystem.generationNumber = 0;
+        evolutionSystem.frameCount = 0;
+      }
+      // For hybrid mode, reset all sub-systems
+      if (evolutionSystem.genetic) {
+        evolutionSystem.genetic.generationNumber = 0;
+        evolutionSystem.genetic.frameCount = 0;
+      }
+    }
+    initializeAgents(); 
+  });
 
   let logBtn = createButton('⏺ RECORD DATA').parent(parent).class('action-btn record');
   logBtn.mousePressed(() => {
@@ -393,15 +411,29 @@ function createSliderWithInput(key, label, min, max, value, parent) {
   let valInput = createInput(value.toString()).parent(row).class('manual-input');
   let s = createSlider(min, max, value).parent(container).style('width','100%');
  
+  // Check if this is a population-related parameter
+  const isPopulationParam = ['numHonest', 'numLiars', 'numStubborn'].includes(key);
+  
   s.input(() => {
     valInput.value(s.value());
     params[key] = s.value();
   });
+  
+  // Call adjustPopulation only when slider is released, not while dragging
+  if (isPopulationParam) {
+    s.changed(() => {
+      adjustPopulation();
+    });
+  }
  
   valInput.input(() => {
     let v = constrain(parseFloat(valInput.value()) || 0, min, max);
     s.value(v);
     params[key] = v;
+    // Adjust population when input changes
+    if (isPopulationParam) {
+      adjustPopulation();
+    }
   });
 }
 
@@ -410,13 +442,10 @@ function initializeAgents() {
   // Reset agent id counter so ids are stable across resets
   Agent._nextId = 0;
   let id = 0;
-  let nL = floor(params.numAgents * params.liarsPercent / 100);
-  let nS = floor(params.numAgents * params.stubbornPercent / 100);
-  let nH = max(0, params.numAgents - nL - nS);
   
-  for (let i = 0; i < nH; i++) agents.push(new Agent(id++, random(width), random(height), AGENT_TYPE.HONEST));
-  for (let i = 0; i < nL; i++) agents.push(new Agent(id++, random(width), random(height), AGENT_TYPE.LIAR));
-  for (let i = 0; i < nS; i++) agents.push(new Agent(id++, random(width), random(height), AGENT_TYPE.STUBBORN));
+  for (let i = 0; i < params.numHonest; i++) agents.push(new Agent(id++, random(width), random(height), AGENT_TYPE.HONEST));
+  for (let i = 0; i < params.numLiars; i++) agents.push(new Agent(id++, random(width), random(height), AGENT_TYPE.LIAR));
+  for (let i = 0; i < params.numStubborn; i++) agents.push(new Agent(id++, random(width), random(height), AGENT_TYPE.STUBBORN));
   
   // Initialize evolution properties for each agent
   if (evolutionSystem && typeof evolutionSystem.initializeAgent === 'function') {
@@ -429,6 +458,166 @@ function initializeAgents() {
   window.agents = agents;
   window.evolutionSystem = evolutionSystem;
   window.evolutionTester = evolutionTester;
+}
+
+function adjustPopulation() {
+  // Get target counts directly from params
+  let targetHonest = params.numHonest;
+  let targetLiars = params.numLiars;
+  let targetStubborn = params.numStubborn;
+  let targetTotal = targetHonest + targetLiars + targetStubborn;
+  
+  console.log(`adjustPopulation called: target H=${targetHonest}, L=${targetLiars}, S=${targetStubborn}, total=${targetTotal}`);
+  
+  // Count current agents by type
+  let currentCounts = { honest: 0, liar: 0, stubborn: 0 };
+  for (let agent of agents) {
+    if (agent.type === AGENT_TYPE.HONEST) currentCounts.honest++;
+    else if (agent.type === AGENT_TYPE.LIAR) currentCounts.liar++;
+    else if (agent.type === AGENT_TYPE.STUBBORN) currentCounts.stubborn++;
+  }
+  
+  // Adjust total population first
+  while (agents.length < targetTotal) {
+    // Add agents to reach target, prioritizing types that are below target
+    let type;
+    if (currentCounts.honest < targetHonest) {
+      type = AGENT_TYPE.HONEST;
+      currentCounts.honest++;
+    } else if (currentCounts.liar < targetLiars) {
+      type = AGENT_TYPE.LIAR;
+      currentCounts.liar++;
+    } else if (currentCounts.stubborn < targetStubborn) {
+      type = AGENT_TYPE.STUBBORN;
+      currentCounts.stubborn++;
+    } else {
+      type = AGENT_TYPE.HONEST; // Default if all targets met
+      currentCounts.honest++;
+    }
+    
+    let newAgent = new Agent(random(width), random(height), type);
+    if (evolutionSystem && typeof evolutionSystem.initializeAgent === 'function') {
+      evolutionSystem.initializeAgent(newAgent);
+    }
+    agents.push(newAgent);
+  }
+  
+  while (agents.length > targetTotal) {
+    // Remove excess agents, prioritizing types that are above target
+    let removeIndex = -1;
+    if (currentCounts.honest > targetHonest) {
+      removeIndex = agents.findIndex(a => a.type === AGENT_TYPE.HONEST);
+      if (removeIndex >= 0) currentCounts.honest--;
+    } else if (currentCounts.liar > targetLiars) {
+      removeIndex = agents.findIndex(a => a.type === AGENT_TYPE.LIAR);
+      if (removeIndex >= 0) currentCounts.liar--;
+    } else if (currentCounts.stubborn > targetStubborn) {
+      removeIndex = agents.findIndex(a => a.type === AGENT_TYPE.STUBBORN);
+      if (removeIndex >= 0) currentCounts.stubborn--;
+    } else {
+      removeIndex = agents.length - 1; // Remove last if all targets met
+    }
+    
+    if (removeIndex >= 0) {
+      agents.splice(removeIndex, 1);
+    }
+  }
+  
+  // Now adjust types for existing agents to match percentages
+  // Convert excess types to deficient types
+  for (let type in [AGENT_TYPE.HONEST, AGENT_TYPE.LIAR, AGENT_TYPE.STUBBORN]) {
+    let typeName, target, current;
+    if (type == AGENT_TYPE.HONEST) {
+      typeName = 'honest'; target = targetHonest; current = currentCounts.honest;
+    } else if (type == AGENT_TYPE.LIAR) {
+      typeName = 'liar'; target = targetLiars; current = currentCounts.liar;
+    } else {
+      typeName = 'stubborn'; target = targetStubborn; current = currentCounts.stubborn;
+    }
+  }
+  
+  // Convert types to match target distribution
+  // IMPORTANT: Also update color so type doesn't revert in Agent.update()
+  while (currentCounts.honest > targetHonest) {
+    let agent = agents.find(a => a.type === AGENT_TYPE.HONEST);
+    if (agent) {
+      if (currentCounts.liar < targetLiars) {
+        agent.type = AGENT_TYPE.LIAR;
+        // Set color to RED (lie believer) - make it clear red
+        agent.color = color(220, 60, 60);
+        if (agent.genome) agent.genome.honestyLevel = 0.1;
+        currentCounts.honest--;
+        currentCounts.liar++;
+      } else if (currentCounts.stubborn < targetStubborn) {
+        agent.type = AGENT_TYPE.STUBBORN;
+        agent.fixedColor = agent.color;
+        if (agent.genome) agent.genome.stubbornness = 0.9;
+        currentCounts.honest--;
+        currentCounts.stubborn++;
+      } else break;
+    } else break;
+  }
+  
+  while (currentCounts.liar > targetLiars) {
+    let agent = agents.find(a => a.type === AGENT_TYPE.LIAR);
+    if (agent) {
+      if (currentCounts.honest < targetHonest) {
+        agent.type = AGENT_TYPE.HONEST;
+        // Set color to GREEN (truth believer) - make it clear green
+        agent.color = color(60, 220, 60);
+        if (agent.genome) agent.genome.honestyLevel = 0.9;
+        currentCounts.liar--;
+        currentCounts.honest++;
+      } else if (currentCounts.stubborn < targetStubborn) {
+        agent.type = AGENT_TYPE.STUBBORN;
+        agent.fixedColor = agent.color;
+        if (agent.genome) agent.genome.stubbornness = 0.9;
+        currentCounts.liar--;
+        currentCounts.stubborn++;
+      } else break;
+    } else break;
+  }
+  
+  while (currentCounts.stubborn > targetStubborn) {
+    let agent = agents.find(a => a.type === AGENT_TYPE.STUBBORN);
+    if (agent) {
+      if (currentCounts.honest < targetHonest) {
+        agent.type = AGENT_TYPE.HONEST;
+        delete agent.fixedColor;
+        // Set color to GREEN (truth believer) - make it clear green
+        agent.color = color(60, 220, 60);
+        if (agent.genome) {
+          agent.genome.honestyLevel = 0.9;
+          agent.genome.stubbornness = 0.5;
+        }
+        currentCounts.stubborn--;
+        currentCounts.honest++;
+      } else if (currentCounts.liar < targetLiars) {
+        agent.type = AGENT_TYPE.LIAR;
+        delete agent.fixedColor;
+        // Set color to RED (lie believer) - make it clear red
+        agent.color = color(220, 60, 60);
+        if (agent.genome) {
+          agent.genome.honestyLevel = 0.1;
+          agent.genome.stubbornness = 0.5;
+        }
+        currentCounts.stubborn--;
+        currentCounts.liar++;
+      } else break;
+    } else break;
+  }
+  
+  // Update window reference
+  window.agents = agents;
+  
+  // Recount to verify
+  let finalCounts = { honest: 0, liar: 0, stubborn: 0 };
+  for (let agent of agents) {
+    if (agent.type === AGENT_TYPE.HONEST) finalCounts.honest++;
+    else if (agent.type === AGENT_TYPE.LIAR) finalCounts.liar++;
+    else if (agent.type === AGENT_TYPE.STUBBORN) finalCounts.stubborn++;
+  }
+  console.log(`adjustPopulation done: final H=${finalCounts.honest}, L=${finalCounts.liar}, S=${finalCounts.stubborn}, total=${agents.length}`);
 }
 
 function updateStats() {
@@ -476,14 +665,16 @@ class Agent {
       // Liars start with lie beliefs (reddish) 
       this.color = color(random(150, 255), random(50, 100), random(50, 100));
     } else if (type === AGENT_TYPE.STUBBORN) {
-      // Stubborn are extremists - either extreme truth or extreme lies
+      // Stubborn are EXTREMISTS with STRONG convictions
+      // They have extreme beliefs (either extreme truth or extreme lies)
+      // And they NEVER change these beliefs
       let isExtremeTruth = random() > 0.5;
       if (isExtremeTruth) {
-        this.color = color(30, 255, 30); // Extreme truth (bright green)
+        this.color = color(10, 255, 10); // Extreme truth (bright green, minimal red)
       } else {
-        this.color = color(255, 30, 30); // Extreme lies (bright red)
+        this.color = color(255, 10, 10); // Extreme lies (bright red, minimal green)
       }
-      this.fixedColor = this.color;
+      this.fixedColor = this.color; // Lock in their strong opinion forever
     }
     
     this.fitness = 0;
@@ -502,10 +693,8 @@ class Agent {
     if (this.pos.y < 0) this.pos.y = height;
     if (this.pos.y > height) this.pos.y = 0;
 
-    // Update agent type based on current belief:
-    // - Truth (more green) → HONEST
-    // - Lie (more red) → LIAR
-    // Stubborn agents keep their special type.
+    // Update agent type based on current belief (same as base mode)
+    // When beliefs shift (color changes), type follows
     if (this.type !== AGENT_TYPE.STUBBORN) {
       const r = red(this.color);
       const g = green(this.color);

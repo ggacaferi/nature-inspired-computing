@@ -76,7 +76,7 @@ class GeneticEvolution {
     let rate = 0.3; // Default for honest and liars
     
     if (agent1.type === AGENT_TYPE.STUBBORN) {
-      rate = 0.01; // Stubborn are 30x more resistant
+      rate = 0.05; // Stubborn are 6x more resistant, but can still change slowly
     } else if (agent1.learningRate !== undefined) {
       rate = agent1.learningRate; // Use genome-based rate if available
     }
@@ -143,7 +143,10 @@ class GeneticEvolution {
     // Create offspring to fill population
     const newAgents = [...survivors];
     
-    while (newAgents.length < params.numAgents) {
+    // Calculate target population from individual counts
+    const targetPopulation = params.numHonest + params.numLiars + params.numStubborn;
+    
+    while (newAgents.length < targetPopulation) {
       // Select two random parents from survivors
       const parent1 = random(survivors);
       const parent2 = random(survivors);

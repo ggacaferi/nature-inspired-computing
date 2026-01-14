@@ -1,5 +1,6 @@
 // Cultural Evolution Module
 // Implements belief dynamics and memetic transmission
+// Uses same genome-based logic as base mode for beliefs/types
 
 class CulturalEvolution {
   constructor() {
@@ -8,114 +9,130 @@ class CulturalEvolution {
     this.socialLearningRate = 0.1; // How fast agents learn from successful neighbors
   }
   
-  // Initialize cultural properties for agent
+  // Initialize genome AND cultural properties for agent
   initializeAgent(agent) {
+    // First, initialize genome (same as genetic evolution)
+    agent.genome = {
+      honestyLevel: random(0, 1),
+      stubbornness: random(0, 1),
+      influenceStrength: random(0, 1),
+      trustThreshold: random(0, 1)
+    };
+    agent.fitness = 0;
+    agent.age = 0;
+    
+    // Apply genome to determine initial belief color and type
+    this.applyGenomeToState(agent);
+    
+    // Add cultural-specific properties
     agent.beliefStrength = random(0.3, 1.0); // Conviction in current belief
     agent.culturalMemory = []; // Remember recent successful interactions
     agent.conversionCount = 0; // Track belief changes
     agent.originalColor = agent.color; // Remember starting belief
   }
   
+  // Apply genome to agent's state (color/type/behavior) - same as genetic evolution
+  applyGenomeToState(agent) {
+    if (!agent.genome) return;
+
+    // honestyLevel → belief color (truth green, lie red)
+    const truthColor = color(60, 220, 60);
+    const lieColor = color(220, 60, 60);
+    agent.color = lerpColor(lieColor, truthColor, agent.genome.honestyLevel);
+
+    // High stubbornness → born stubborn (locks type)
+    if (agent.genome.stubbornness > 0.8) {
+      agent.type = AGENT_TYPE.STUBBORN;
+      agent.fixedColor = agent.color;
+    }
+
+    // Apply genome to behavior
+    this.applyGenomeToBehavior(agent);
+  }
+  
+  // Apply genome traits to agent behavior
+  applyGenomeToBehavior(agent) {
+    if (!agent.genome) return;
+    // Stubbornness affects learning rate and belief strength
+    agent.learningRate = 0.3 * (1 - agent.genome.stubbornness);
+    agent.beliefStrength = agent.genome.stubbornness;
+  }
+  
   // Update agent beliefs each frame
   update(agent, agents) {
     if (!this.enabled) return;
     
-    // Ensure agent has cultural properties
-    if (agent.beliefStrength === undefined) {
+    // Ensure agent has genome and cultural properties
+    if (!agent.genome) {
       this.initializeAgent(agent);
     }
     
+    agent.age++;
+    
+    // Apply genome to behavior each frame
+    this.applyGenomeToBehavior(agent);
+    
     // Natural belief decay over time
-    agent.beliefStrength *= (1 - this.beliefDecayRate);
-    agent.beliefStrength = constrain(agent.beliefStrength, 0.1, 1.0);
+    if (agent.beliefStrength !== undefined) {
+      agent.beliefStrength *= (1 - this.beliefDecayRate);
+      agent.beliefStrength = constrain(agent.beliefStrength, 0.1, 1.0);
+    }
     
     // Social learning: observe successful neighbors
     this.socialLearning(agent, agents);
-    
-    // Cultural type conversion - learn behaviors from peers
-    if (frameCount % 120 === 0) {
-      this.culturalConversion(agent, agents);
-    }
   }
   
   // Process interaction (wrapper for transmit)
   processInteraction(agent1, agent2) {
-    return this.transmit(agent1, agent2);
-  }
-  
-  // Process cultural transmission between agents
-  transmit(sender, receiver) {
     if (!this.enabled) return;
     
-    // Ensure both have cultural properties
-    if (sender.beliefStrength === undefined) this.initializeAgent(sender);
-    if (receiver.beliefStrength === undefined) this.initializeAgent(receiver);
+    // Calculate learning rate based on type and genome (same as genetic evolution)
+    let rate = 0.3; // Default for honest and liars
     
-    // Calculate persuasion strength
-    let persuasion = sender.beliefStrength;
-    let resistance = receiver.beliefStrength;
-    
-    // Stubborn agents are 10x more resistant
-    if (receiver.type === AGENT_TYPE.STUBBORN) {
-      resistance *= 10;
+    if (agent1.type === AGENT_TYPE.STUBBORN) {
+      rate = 0.05; // Stubborn are 6x more resistant, but can still change slowly
+    } else if (agent1.learningRate !== undefined) {
+      rate = agent1.learningRate; // Use genome-based rate if available
     }
     
-    // Apply genome traits if available
-    if (sender.genome) {
-      persuasion *= sender.genome.influenceStrength;
-    }
-    if (receiver.genome) {
-      resistance *= receiver.genome.stubbornness;
-      // Trust threshold affects receptiveness
-      if (sender.genome && sender.genome.honestyLevel < receiver.genome.trustThreshold) {
-        resistance *= 1.5; // More resistant to dishonest agents
+    // Agent1 receives what agent2 transmits (same as genetic evolution)
+    let transmittedColor = agent2.getTransmittedColor();
+    agent1.color = lerpColor(color(agent1.color), color(transmittedColor), rate);
+    
+    // Cultural-specific: track persuasion success
+    const colorChange = this.colorDistance(color(agent1.color), color(transmittedColor));
+    if (colorChange < 50) {
+      // Successful persuasion - update belief strengths
+      if (agent2.beliefStrength !== undefined) {
+        agent2.beliefStrength = constrain(agent2.beliefStrength + 0.05, 0, 1);
+      }
+      if (agent1.beliefStrength !== undefined) {
+        agent1.beliefStrength *= 0.8; // Receiver's belief weakened
+      }
+      
+      // Record in cultural memory
+      if (agent2.culturalMemory) {
+        agent2.culturalMemory.push({
+          target: agent1,
+          success: true,
+          strength: rate
+        });
+        if (agent2.culturalMemory.length > 20) {
+          agent2.culturalMemory.shift();
+        }
+      }
+      
+      if (agent1.conversionCount !== undefined) {
+        agent1.conversionCount++;
       }
     }
     
-    // Calculate belief transfer - stubborn will have much lower transferStrength
-    const transferStrength = persuasion / (persuasion + resistance);
-    
-    // Transfer belief (color) - receiver gets what sender transmits
-    const oldColor = receiver.color;
-    const transmittedColor = sender.getTransmittedColor();
-    
-    receiver.color = lerpColor(
-      color(receiver.color),
-      color(transmittedColor),
-      transferStrength * 0.3
-    );
-    
-    // Update belief strengths
-    if (transferStrength > 0.5) {
-      // Successful persuasion
-      sender.beliefStrength = constrain(sender.beliefStrength + 0.05, 0, 1);
-      receiver.beliefStrength *= 0.8; // Receiver's belief weakened
-      
-      // Record in cultural memory
-      sender.culturalMemory.push({
-        target: receiver,
-        success: true,
-        strength: transferStrength
-      });
-    } else {
-      // Failed persuasion
-      receiver.beliefStrength = constrain(receiver.beliefStrength + 0.02, 0, 1);
-    }
-    
-    // Manage memory size
-    if (sender.culturalMemory.length > 20) {
-      sender.culturalMemory.shift();
-    }
-    
-    // Track conversions
-    if (this.colorDistance(oldColor, receiver.color) > 50) {
-      receiver.conversionCount++;
-    }
-    
-    return transferStrength;
+    // Add fitness for successful interactions
+    agent1.fitness += 0.1;
+    agent2.fitness += 0.1;
   }
   
-  // Social learning: copy strategies of successful neighbors
+  // Social learning: copy strategies of successful neighbors (cultural mechanism)
   socialLearning(agent, agents) {
     if (!agent.genome) return; // Only works with genome
     
@@ -128,18 +145,18 @@ class CulturalEvolution {
     
     if (neighbors.length === 0) return;
     
-    // Find most successful neighbor (highest belief strength)
+    // Find most successful neighbor (highest fitness)
     let bestNeighbor = null;
-    let bestStrength = agent.beliefStrength;
+    let bestFitness = agent.fitness;
     
     for (let neighbor of neighbors) {
-      if (neighbor.beliefStrength && neighbor.beliefStrength > bestStrength) {
-        bestStrength = neighbor.beliefStrength;
+      if (neighbor.fitness > bestFitness) {
+        bestFitness = neighbor.fitness;
         bestNeighbor = neighbor;
       }
     }
     
-    // Learn from best neighbor
+    // Learn from best neighbor (cultural transmission of successful traits)
     if (bestNeighbor && bestNeighbor.genome) {
       // Slightly adjust genome towards successful neighbor
       for (let key in agent.genome) {
@@ -149,56 +166,9 @@ class CulturalEvolution {
           this.socialLearningRate * 0.01 // Very gradual learning
         );
       }
-    }
-  }
-  
-  // Cultural type conversion through peer influence
-  culturalConversion(agent, agents) {
-    if (!this.enabled || !agent || !agent.pos) return;
-    
-    // Don't convert stubborn agents easily
-    if (agent.type === AGENT_TYPE.STUBBORN && agent.beliefStrength > 0.7) return;
-    
-    // Count nearby agent types
-    let nearby = { honest: 0, liar: 0, stubborn: 0, total: 0 };
-    
-    for (let other of agents) {
-      if (!other || other === agent || !other.pos) continue;
       
-      let dx = other.pos.x - agent.pos.x;
-      let dy = other.pos.y - agent.pos.y;
-      let d = Math.sqrt(dx * dx + dy * dy);
-      
-      if (d < 80) {
-        if (other.type === AGENT_TYPE.HONEST) nearby.honest++;
-        else if (other.type === AGENT_TYPE.LIAR) nearby.liar++;
-        else if (other.type === AGENT_TYPE.STUBBORN) nearby.stubborn++;
-        nearby.total++;
-      }
-    }
-    
-    if (nearby.total < 3) return;
-    
-    // If strongly surrounded by one type, consider conversion
-    let dominantType = null;
-    let dominantCount = 0;
-    
-    if (nearby.honest > dominantCount) { dominantType = AGENT_TYPE.HONEST; dominantCount = nearby.honest; }
-    if (nearby.liar > dominantCount) { dominantType = AGENT_TYPE.LIAR; dominantCount = nearby.liar; }
-    if (nearby.stubborn > dominantCount) { dominantType = AGENT_TYPE.STUBBORN; dominantCount = nearby.stubborn; }
-    
-    // Convert if surrounded by 60%+ of one type and agent has low belief strength
-    if (dominantCount / nearby.total > 0.6 && agent.beliefStrength < 0.4 && agent.type !== dominantType) {
-      agent.type = dominantType;
-      agent.conversionCount++;
-      
-      // Update belief strength
-      agent.beliefStrength = random(0.3, 0.6);
-      
-      // Update fixed color for stubborn
-      if (agent.type === AGENT_TYPE.STUBBORN && agent.color) {
-        agent.fixedColor = agent.color;
-      }
+      // Update behavior based on new genome values
+      this.applyGenomeToBehavior(agent);
     }
   }
   
