@@ -687,14 +687,32 @@ class Agent {
     rotate(this.vel.heading() + PI/2);
     fill(this.color);
     stroke(255, 100);
+    strokeWeight(1.5);
     
-    if (this.type === AGENT_TYPE.LIAR) {
-      triangle(0, -this.r*1.5, -this.r, this.r, this.r, this.r);
-    } else if (this.type === AGENT_TYPE.STUBBORN) {
-      rectMode(CENTER);
-      rect(0, 0, this.r*2, this.r*2);
-    } else {
+    if (this.type === AGENT_TYPE.HONEST) {
+      // Honest: Perfect circle with centered dot (peace, balance, trustworthiness)
       ellipse(0, 0, this.r*2, this.r*2);
+      fill(255);
+      noStroke();
+      ellipse(0, 0, this.r*0.6, this.r*0.6);
+    } else if (this.type === AGENT_TYPE.LIAR) {
+      // Liars: Jagged star (chaotic, unpredictable, deceptive)
+      this.drawJaggedStar(this.r);
+    } else if (this.type === AGENT_TYPE.STUBBORN) {
+      // Stubborn: Thick rectangle with emphasized corners (rigid, immovable)
+      rectMode(CENTER);
+      stroke(255, 150);
+      strokeWeight(2.5);
+      rect(0, 0, this.r*2.2, this.r*2.2);
+      // Add corner emphasis
+      noFill();
+      stroke(255, 80);
+      strokeWeight(1);
+      for (let i = -1; i <= 1; i += 2) {
+        for (let j = -1; j <= 1; j += 2) {
+          point(i * this.r*1.2, j * this.r*1.2);
+        }
+      }
     }
     pop();
     
@@ -719,6 +737,25 @@ class Agent {
       noFill(); stroke(255, 255, 0); strokeWeight(2);
       ellipse(this.pos.x, this.pos.y, 30, 30);
     }
+  }
+
+  drawJaggedStar(r) {
+    // Draw jagged star with irregular points for liars
+    let points = 7; // Odd number for asymmetry
+    let innerRadius = r * 0.4;
+    let outerRadius = r * 1.3;
+    
+    beginShape();
+    for (let i = 0; i < points * 2; i++) {
+      let angle = TWO_PI / (points * 2) * i;
+      let radius = i % 2 === 0 ? outerRadius : innerRadius;
+      // Add slight randomness to outer points for "jagged" effect
+      let randomOffset = i % 2 === 0 ? random(-r*0.15, r*0.15) : 0;
+      let x = cos(angle) * (radius + randomOffset);
+      let y = sin(angle) * (radius + randomOffset);
+      vertex(x, y);
+    }
+    endShape(CLOSE);
   }
 }
 
