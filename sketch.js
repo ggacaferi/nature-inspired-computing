@@ -301,9 +301,24 @@ function updateInspectorUI() {
   if (!selectedAgent) { content.html('<p style="opacity:0.5">Click an agent</p>'); return; }
   let typeStr = ["Honest", "Liar", "Stubborn"][selectedAgent.type];
   let genomeInfo = '';
+  let fitnessInfo = '';
+  let conversionInfo = '';
+  
+  // Genome info (Genetic mode)
   if (selectedAgent.genome) {
     genomeInfo = `<p style="font-size:10px; margin-top:8px; opacity:0.7">Genome: H:${selectedAgent.genome.honestyLevel.toFixed(2)} S:${selectedAgent.genome.stubbornness.toFixed(2)}</p>`;
   }
+  
+  // Fitness info (Game Theory & Genetic modes)
+  if (selectedAgent.fitness !== undefined) {
+    fitnessInfo = `<p style="font-size:10px; margin-top:6px; opacity:0.8">Fitness: <b style="color:#FFD700">${selectedAgent.fitness.toFixed(2)}</b></p>`;
+  }
+  
+  // Conversions info (Cultural mode)
+  if (selectedAgent.conversionCount !== undefined) {
+    conversionInfo = `<p style="font-size:10px; margin-top:6px; opacity:0.8">Mind Changes: <b style="color:#FF9800">${selectedAgent.conversionCount}</b></p>`;
+  }
+  
   content.html(`
     <p>ID: <b>${selectedAgent.id}</b></p>
     <p>State: <b style="color:${selectedAgent.type === 1 ? '#ff3232' : selectedAgent.type === 0 ? '#32ff64' : '#cccccc'}">${typeStr}</b></p>
@@ -311,6 +326,8 @@ function updateInspectorUI() {
       <span>Belief: </span>
       <div style="width:60px; height:15px; background:rgb(${red(selectedAgent.color)},${green(selectedAgent.color)},${blue(selectedAgent.color)}); margin-left:10px; border:1px solid #444;"></div>
     </div>
+    ${fitnessInfo}
+    ${conversionInfo}
     ${genomeInfo}
   `);
 }
@@ -318,9 +335,25 @@ function updateInspectorUI() {
 function updateStatsUI() {
   if (panels.stats.content.style('display') === 'none') return;
   panels.stats.content.html(`
-    <p style="color:#32ff64; font-weight:bold;">HONEST: ${stats.honest}</p>
-    <p style="color:#ff3232; font-weight:bold;">LIARS: ${stats.liars}</p>
-    <p style="color:#cccccc">STUBBORN: ${stats.stubborn}</p>
+    <p style="display:flex; align-items:center; gap:10px; color:#32ff64; font-weight:bold; margin:6px 0;">
+      <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink: 0;">
+        <circle cx="8" cy="8" r="6" fill="#32ff64" stroke="#ffffff" stroke-width="1"/>
+        <circle cx="8" cy="8" r="3.6" fill="white"/>
+      </svg>
+      HONEST: ${stats.honest}
+    </p>
+    <p style="display:flex; align-items:center; gap:10px; color:#ff3232; font-weight:bold; margin:6px 0;">
+      <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink: 0;">
+        <polygon points="8,0 10,6 16,6 11,10 13,16 8,12 3,16 5,10 0,6 6,6" fill="#ff3232" stroke="#ffffff" stroke-width="0.5"/>
+      </svg>
+      LIARS: ${stats.liars}
+    </p>
+    <p style="display:flex; align-items:center; gap:10px; color:#cccccc; font-weight:bold; margin:6px 0;">
+      <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink: 0;">
+        <rect x="3" y="3" width="10" height="10" fill="#cccccc" stroke="#ffffff" stroke-width="1.5"/>
+      </svg>
+      STUBBORN: ${stats.stubborn}
+    </p>
   `);
 }
 

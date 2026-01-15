@@ -80,6 +80,21 @@ class GeneticEvolution {
     
     agent.age++;
     
+    // Stubborn agents get a fitness bonus for their resilience
+    if (agent.type === AGENT_TYPE.STUBBORN) {
+      agent.fitness += 0.022; // Small survival advantage
+    }
+    
+    // Dynamic generation-based fitness decay: aggressive exponential aging
+    // Each new generation causes previous generations to lose fitness much faster
+    // Formula: base decay (0.5%) * 2.5^(generations_since_agent_was_born)
+    if (frameCount % 60 === 0 && agent.fitness > 0) {
+      let generationGap = (this.generationNumber || 0) - (agent.generation || 0);
+      let decayPercentage = 0.005 * Math.pow(2.5, generationGap); // Aggressive exponential decay
+      let decayRate = 1 - decayPercentage;
+      agent.fitness *= decayRate;
+    }
+    
     // Apply genome to behavior
     this.applyGenomeToBehavior(agent);
   }
@@ -134,9 +149,10 @@ class GeneticEvolution {
             // Find most successful neighbor
             let best = neighbors.reduce((max, n) => n.fitness > max.fitness ? n : max, neighbors[0]);
             if (best.fitness > agent.fitness + 3) {
-              // Copy successful neighbor's genome traits
-              agent.genome.honestyLevel = best.genome.honestyLevel + random(-0.1, 0.1);
-              agent.genome.stubbornness = best.genome.stubbornness + random(-0.1, 0.1);
+              // Gradually adopt successful neighbor's genome traits (30% blend per learning event)
+              let blendRate = 0.3;
+              agent.genome.honestyLevel += (best.genome.honestyLevel - agent.genome.honestyLevel) * blendRate;
+              agent.genome.stubbornness += (best.genome.stubbornness - agent.genome.stubbornness) * blendRate;
               agent.genome.honestyLevel = constrain(agent.genome.honestyLevel, 0, 1);
               agent.genome.stubbornness = constrain(agent.genome.stubbornness, 0, 1);
               this.applyGenomeToBehavior(agent);
@@ -177,9 +193,9 @@ class GeneticEvolution {
       newAgents.push(child);
     }
     
-    // Reset fitness for new generation
+    // Preserve fitness across generations
+    // Survivors keep their fitness; offspring already inherited from parents
     for (let agent of newAgents) {
-      agent.fitness = 0;
       agent.age = 0;
     }
     
@@ -203,6 +219,17 @@ class GeneticEvolution {
       trustThreshold: random() < 0.5 ? parent1.genome.trustThreshold : parent2.genome.trustThreshold
     };
     
+    // If parent(s) are stubborn, boost offspring stubbornness to preserve trait
+    if (parent1.type === AGENT_TYPE.STUBBORN || parent2.type === AGENT_TYPE.STUBBORN) {
+      // Both parents stubborn: larger bonus
+      if (parent1.type === AGENT_TYPE.STUBBORN && parent2.type === AGENT_TYPE.STUBBORN) {
+        child.genome.stubbornness = Math.min(1, child.genome.stubbornness + 0.35);
+      } else {
+        // Only one parent stubborn: smaller bonus
+        child.genome.stubbornness = Math.min(1, child.genome.stubbornness + 0.2);
+      }
+    }
+    
     // Mutation
     this.mutate(child.genome);
 
@@ -213,7 +240,8 @@ class GeneticEvolution {
     // Set generation number for this child
     child.generation = this.generationNumber;
     
-    child.fitness = 0;
+    // Offspring inherit 50% of average parent fitness (reduced inheritance to prevent dominance)
+    child.fitness = (parent1.fitness + parent2.fitness) / 4;
     child.age = 0;
     
     return child;
