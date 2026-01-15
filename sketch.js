@@ -33,6 +33,11 @@ let evolutionTester = null;
 let history = [];
 const maxHistory = 200;
 
+// Simulation Control
+let speedMultiplier = 1;
+let isSimulationRunning = true;
+let frameCounter = 0;
+
 // UI Panel References
 let panels = {};
 
@@ -52,20 +57,13 @@ function setup() {
   panels.config = createPanel('SWARM CONFIG', 20, 20, '300px');
   buildConfigUI(panels.config.content);
  
-  panels.inspector = createPanel('AGENT INSPECTOR', windowWidth - 280, 20, '240px');
+  panels.controls = createPanel('SIMULATION CONTROL', windowWidth - 320, 20, '280px');
+  buildControlsUI(panels.controls.content);
+ 
+  panels.inspector = createPanel('AGENT INSPECTOR', windowWidth - 280, 320, '240px');
  
   panels.stats = createPanel('LIVE POPULATION STATS', 20, windowHeight - 180, '220px');
 
-  panels.graph = createPanel('OPINION TRENDS', windowWidth / 2 - 175, windowHeight - 200, '350px');
-  // Add a canvas inside the graph panel for drawing lines
-  let graphCanvas = document.createElement('canvas');
-  graphCanvas.id = 'graphCanvas';
-  graphCanvas.width = 320;
-  graphCanvas.height = 120;
-  graphCanvas.style.borderRadius = '8px';
-  graphCanvas.style.background = 'rgba(10, 10, 15, 0.5)';
-  panels.graph.content.elt.appendChild(graphCanvas);
-  
   panels.beliefs = createPanel('BELIEF ANALYSIS', windowWidth - 340, windowHeight - 280, '320px');
 
   initializeAgents();
@@ -73,6 +71,64 @@ function setup() {
 
 function draw() {
   background(10);
+  
+  // Handle simulation pausing
+  if (!isSimulationRunning) {
+    // Display last frame without updating
+    for (let agent of agents) {
+      agent.display();
+    }
+    
+    // Display paused indicator
+    fill(255, 0, 0); 
+    textSize(16);
+    textAlign(CENTER);
+    text('⏸ PAUSED', width / 2, 40);
+    updateInspectorUI();
+    updateStatsUI();
+    updateBeliefsUI();
+    return;
+  }
+  
+  // Handle speed control
+  if (speedMultiplier < 1) {
+    // For slowdown: only update on certain frames
+    frameCounter++;
+    const skipFrames = Math.ceil(1 / speedMultiplier);
+    if (frameCounter % skipFrames === 0) {
+      // Update simulation only on selected frames
+      updateSimulation();
+    } else {
+      // On skipped frames, just display current state
+      for (let agent of agents) {
+        agent.display();
+      }
+    }
+  } else if (speedMultiplier > 1) {
+    // For speedup: process simulation multiple times per frame
+    const iterations = Math.floor(speedMultiplier);
+    for (let i = 0; i < iterations; i++) {
+      updateSimulation();
+    }
+    // Handle fractional speedup (e.g., 1.5x)
+    if (speedMultiplier % 1 !== 0) {
+      frameCounter++;
+      if (frameCounter % 2 === 0) {
+        updateSimulation();
+      }
+    }
+  } else {
+    // Normal speed (1x)
+    updateSimulation();
+  }
+
+  // Update dynamic UI contents
+  updateInspectorUI();
+  updateStatsUI();
+  updateBeliefsUI();
+}
+
+function updateSimulation() {
   updateStats();
   updateHistory();
 
@@ -131,12 +187,6 @@ function draw() {
     fill(255, 0, 0); noStroke();
     circle(width - 25, height - 25, 12);
   }
-
-  // Update dynamic UI contents
-  updateInspectorUI();
-  updateStatsUI();
-  updateBeliefsUI();
-  drawGraphLines();
 }
 
 function initializeEvolutionSystem() {
@@ -244,55 +294,47 @@ function buildConfigUI(parent) {
   });
 }
 
+function buildControlsUI(parent) {
+  // Stop/Resume Button
+  let stopBtn = createButton('⏸ STOP SIM').parent(parent).class('action-btn stop').style('margin-top', '0px');
+  stopBtn.mousePressed(() => {
+    isSimulationRunning = !isSimulationRunning;
+    stopBtn.html(isSimulationRunning ? '⏸ STOP SIM' : '▶ RESUME SIM');
+    stopBtn.elt.classList.toggle('paused', !isSimulationRunning);
+  });
+
+  // Speed control section
+  let speedLabel = createP('PLAYBACK SPEED:').parent(parent).style('margin', '15px 0 10px 0').style('font-size', '11px').style('opacity', '0.9').style('font-weight', 'bold').style('color', '#4CAF50');
+  
+  let speedContainer = createDiv().parent(parent).style('display', 'grid').style('grid-template-columns', '1fr 1fr').style('gap', '6px');
+  
+  const speedOptions = [
+    { label: '0.5x', value: 0.5 },
+    { label: '1x', value: 1 },
+    { label: '1.5x', value: 1.5 },
+    { label: '2x', value: 2 },
+    { label: '5x', value: 5 }
+  ];
+  
+  speedOptions.forEach(opt => {
+    let btn = createButton(opt.label).parent(speedContainer).class('speed-btn').style('width', '100%');
+    if (opt.value === 1) btn.class('speed-btn active');
+    
+    btn.mousePressed(() => {
+      speedMultiplier = opt.value;
+      // Update button styles
+      let allSpeedBtns = speedContainer.elt.querySelectorAll('.speed-btn');
+      allSpeedBtns.forEach(b => b.classList.remove('active'));
+      btn.elt.classList.add('active');
+    });
+  });
+}
+
 function updateHistory() {
   if (frameCount % 5 === 0) {
     history.push({ h: stats.honest, l: stats.liars });
     if (history.length > maxHistory) history.shift();
   }
-}
-
-function drawGraphLines() {
-  if (panels.graph.content.style('display') === 'none') return;
-  
-  let canvas = document.getElementById('graphCanvas');
-  if (!canvas) return;
-  
-  let ctx = canvas.getContext('2d');
-  let w = canvas.width;
-  let h = canvas.height;
-  
-  // Clear canvas
-  ctx.clearRect(0, 0, w, h);
-  
-  // Draw background
-  ctx.fillStyle = 'rgba(10, 10, 15, 0.5)';
-  ctx.fillRect(0, 0, w, h);
-  
-  if (history.length < 2) return;
-  
-  // Draw Honest line (Green)
-  ctx.strokeStyle = 'rgb(50, 255, 100)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let i = 0; i < history.length; i++) {
-    let px = (i / maxHistory) * w;
-    let py = h - (history[i].h / params.numAgents) * h;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.stroke();
-  
-  // Draw Liars line (Red)
-  ctx.strokeStyle = 'rgb(255, 50, 50)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let i = 0; i < history.length; i++) {
-    let px = (i / maxHistory) * w;
-    let py = h - (history[i].l / params.numAgents) * h;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.stroke();
 }
 
 function updateInspectorUI() {
