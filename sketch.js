@@ -79,6 +79,9 @@ function draw() {
       agent.display();
     }
     
+    // Allow agent selection even when paused
+    handleAgentSelection();
+    
     // Display paused indicator
     fill(255, 0, 0); 
     textSize(16);
@@ -103,6 +106,7 @@ function draw() {
       for (let agent of agents) {
         agent.display();
       }
+      handleAgentSelection();
     }
   } else if (speedMultiplier > 1) {
     // For speedup: process simulation multiple times per frame
@@ -126,6 +130,18 @@ function draw() {
   updateInspectorUI();
   updateStatsUI();
   updateBeliefsUI();
+}
+
+function handleAgentSelection() {
+  // Allow agent selection by clicking on them
+  if (mouseIsPressed) {
+    for (let agent of agents) {
+      if (dist(mouseX, mouseY, agent.pos.x, agent.pos.y) < 20) {
+        selectedAgent = agent;
+        break;
+      }
+    }
+  }
 }
 
 function updateSimulation() {
@@ -160,11 +176,6 @@ function updateSimulation() {
       totalBelief += b;
       values.push(b);
     }
-
-    // Agent selection (Click)
-    if (mouseIsPressed && dist(mouseX, mouseY, agent.pos.x, agent.pos.y) < 20) {
-      selectedAgent = agent;
-    }
   }
   
   // Evolve population periodically
@@ -187,6 +198,9 @@ function updateSimulation() {
     fill(255, 0, 0); noStroke();
     circle(width - 25, height - 25, 12);
   }
+  
+  // Handle agent selection
+  handleAgentSelection();
 }
 
 function initializeEvolutionSystem() {
