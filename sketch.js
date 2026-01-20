@@ -64,8 +64,6 @@ function setup() {
  
   panels.stats = createPanel('LIVE POPULATION STATS', 20, windowHeight - 180, '220px');
 
-  panels.beliefs = createPanel('BELIEF ANALYSIS', windowWidth - 340, windowHeight - 280, '320px');
-
   initializeAgents();
 }
 
@@ -89,7 +87,6 @@ function draw() {
     text('⏸ PAUSED', width / 2, 40);
     updateInspectorUI();
     updateStatsUI();
-    updateBeliefsUI();
     return;
   }
   
@@ -129,7 +126,6 @@ function draw() {
   // Update dynamic UI contents
   updateInspectorUI();
   updateStatsUI();
-  updateBeliefsUI();
 }
 
 function handleAgentSelection() {
@@ -390,6 +386,18 @@ function updateInspectorUI() {
 
 function updateStatsUI() {
   if (panels.stats.content.style('display') === 'none') return;
+  
+  // Calculate Truth vs Lies balance
+  let truthCount = 0;
+  let lieCount = 0;
+  for (let agent of agents) {
+    if (green(agent.color) > red(agent.color)) truthCount++;
+    else lieCount++;
+  }
+  let total = truthCount + lieCount;
+  let truthRatio = total > 0 ? (truthCount / total * 100).toFixed(0) : 50;
+  let lieRatio = total > 0 ? (lieCount / total * 100).toFixed(0) : 50;
+
   panels.stats.content.html(`
     <p style="display:flex; align-items:center; gap:10px; color:#32ff64; font-weight:bold; margin:6px 0;">
       <svg width="16" height="16" viewBox="0 0 16 16" style="flex-shrink: 0;">
@@ -410,96 +418,18 @@ function updateStatsUI() {
       </svg>
       STUBBORN: ${stats.stubborn}
     </p>
-  `);
-}
 
-function updateBeliefsUI() {
-  if (panels.beliefs.content.style('display') === 'none') return;
-  
-  // Categorize agents by truth vs lies
-  let truthBelievers = [];
-  let lieBelievers = [];
-  
-  for (let agent of agents) {
-    let r = red(agent.color);
-    let g = green(agent.color);
-    let b = blue(agent.color);
-    
-    // Calculate if color is closer to truth (green) or lies (red)
-    let truthScore = g; // Green channel = truth
-    let lieScore = r;   // Red channel = lies
-    
-    // Saturation indicates extremism
-    let max_c = Math.max(r, g, b);
-    let min_c = Math.min(r, g, b);
-    let saturation = max_c > 0 ? (max_c - min_c) / max_c : 0;
-    
-    let belief = {
-      agent: agent,
-      color: agent.color,
-      truthScore: truthScore,
-      lieScore: lieScore,
-      saturation: saturation
-    };
-    
-    // Classify purely as truth vs lies (no extremist category)
-    if (truthScore > lieScore) {
-      truthBelievers.push(belief);
-    } else {
-      lieBelievers.push(belief);
-    }
-  }
-  
-  // Build HTML
-  let html = '<div style="font-size:10px; line-height:1.6;">';
-  html += '<p style="opacity:0.7; margin-bottom:10px; font-size:11px;">BELIEF DISTRIBUTION:</p>';
-  
-  // Truth believers
-  if (truthBelievers.length > 0) {
-    let sample = truthBelievers[floor(truthBelievers.length / 2)];
-    html += `<div style="margin-bottom:10px;">
-      <div style="display:flex; align-items:center; margin-bottom:4px;">
-        <div style="width:22px; height:22px; background:rgb(${red(sample.color)},${green(sample.color)},${blue(sample.color)}); border:1px solid #444; margin-right:8px;"></div>
-        <span style="font-weight:bold; color:#4CAF50;">TRUTH (${truthBelievers.length})</span>
+    <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15);">
+      <p style="opacity:0.8; margin-bottom:5px; font-size:11px;">Truth vs Lies Balance:</p>
+      <div style="display:flex; gap:4px; height:12px; margin-bottom:5px;">
+        <div style="flex:${truthRatio}; background:#4CAF50; border-radius:2px;"></div>
+        <div style="flex:${lieRatio}; background:#F44336; border-radius:2px;"></div>
       </div>
-      <div style="padding-left:30px; opacity:0.85; font-size:9px;">
-        Honest agents believing accurate information. Green tint indicates truthful beliefs.
-      </div>
-    </div>`;
-  }
-  
-  // Lie believers  
-  if (lieBelievers.length > 0) {
-    let sample = lieBelievers[floor(lieBelievers.length / 2)];
-    html += `<div style="margin-bottom:10px;">
-      <div style="display:flex; align-items:center; margin-bottom:4px;">
-        <div style="width:22px; height:22px; background:rgb(${red(sample.color)},${green(sample.color)},${blue(sample.color)}); border:1px solid #444; margin-right:8px;"></div>
-        <span style="font-weight:bold; color:#F44336;">LIES (${lieBelievers.length})</span>
-      </div>
-      <div style="padding-left:30px; opacity:0.85; font-size:9px;">
-        Agents deceived by liars. Red tint shows inverted/false beliefs spread by dishonest agents.
-      </div>
-    </div>`;
-  }
-  
-  // Analysis metrics
-  let totalNormal = truthBelievers.length + lieBelievers.length;
-  let truthRatio = totalNormal > 0 ? (truthBelievers.length / totalNormal * 100).toFixed(0) : 50;
-  let lieRatio = totalNormal > 0 ? (lieBelievers.length / totalNormal * 100).toFixed(0) : 50;
-  
-  html += `<div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15);">
-    <p style="opacity:0.8; margin-bottom:5px;">Truth vs Lies Balance:</p>
-    <div style="display:flex; gap:4px; height:18px; margin-bottom:5px;">
-      <div style="flex:${truthRatio}; background:#4CAF50; border-radius:2px;"></div>
-      <div style="flex:${lieRatio}; background:#F44336; border-radius:2px;"></div>
+      <p style="font-size:9px; opacity:0.6;">
+        ${truthRatio}% truth / ${lieRatio}% lies
+      </p>
     </div>
-    <p style="font-size:9px; opacity:0.6;">
-      ${truthRatio}% truth / ${lieRatio}% lies
-    </p>
-  </div>`;
-  
-  html += '</div>';
-  panels.beliefs.content.html(html);
+  `);
 }
 
 function createSliderWithInput(key, label, min, max, value, parent) {
