@@ -234,13 +234,12 @@ class GeneticEvolution {
     this.mutate(child.genome);
 
     // Apply the inherited genome to set initial behavior & belief color
-    // (do NOT re-randomize the genome here)
     this.applyGenomeToState(child);
     
     // Set generation number for this child
     child.generation = this.generationNumber;
     
-    // Offspring inherit 50% of average parent fitness (reduced inheritance to prevent dominance)
+    // Offspring inherit 50% of average parent fitness 
     child.fitness = (parent1.fitness + parent2.fitness) / 4;
     child.age = 0;
     
@@ -266,7 +265,7 @@ class GeneticEvolution {
     return sum / agents.length;
   }
   
-  // Add fitness to agent (called by other modules)
+  // Add fitness to agent 
   addFitness(agent, amount) {
     agent.fitness += amount;
   }
@@ -285,7 +284,7 @@ class GeneticEvolution {
     title.style('font-size', '13px');
     title.style('color', '#4CAF50');
     
-    // Generation info
+    
     let info = createP(`Gen: <span id="genNum">0</span> | Avg Fit: <span id="avgFit">0</span>`);
     info.parent(container);
     info.style('margin', '5px 0');
@@ -304,7 +303,7 @@ class GeneticEvolution {
   }
 }
 
-// Export for use
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = GeneticEvolution;
 }

@@ -178,13 +178,11 @@ function updateSimulation() {
     }
   }
   
-  // Evolve population periodically
+
   if (evolutionSystem && typeof evolutionSystem.evolvePopulation === 'function') {
     const evolvedAgents = evolutionSystem.evolvePopulation(agents);
-    // Some evolution systems (genetic) return a NEW agents array when generation completes
     if (Array.isArray(evolvedAgents) && evolvedAgents !== agents) {
       agents = evolvedAgents;
-      // Keep window references in sync for tester & console debugging
       window.agents = agents;
     }
   }
@@ -261,7 +259,7 @@ function createPanel(title, x, y, w, h) {
 }
 
 function buildConfigUI(parent) {
-  // Evolution mode selector
+  // The selector for evoultion modes 
   let modeLabel = createP('Evolution Mode:').parent(parent).style('margin', '0 0 5px 0').style('font-size', '11px');
   
   let modeSelector = createSelect().parent(parent).class('glass-select');
@@ -283,7 +281,7 @@ function buildConfigUI(parent) {
   createSliderWithInput('stubbornPercent', 'Stubborn %', 0, 100, params.stubbornPercent, parent);
   createSliderWithInput('proximityRadius', 'Signal Range', 10, 150, params.proximityRadius, parent);
 
-  // Flocking controls
+  // Flocking Settings 
   createSliderWithInput('separationWeight', 'Separation', 0, 3, params.separationWeight, parent);
   createSliderWithInput('alignmentWeight', 'Alignment', 0, 3, params.alignmentWeight, parent);
   createSliderWithInput('cohesionWeight', 'Cohesion', 0, 3, params.cohesionWeight, parent);
@@ -317,7 +315,7 @@ function buildControlsUI(parent) {
     stopBtn.elt.classList.toggle('paused', !isSimulationRunning);
   });
 
-  // Speed control section
+  // Speed control menu
   let speedLabel = createP('PLAYBACK SPEED:').parent(parent).style('margin', '15px 0 10px 0').style('font-size', '11px').style('opacity', '0.9').style('font-weight', 'bold').style('color', '#4CAF50');
   
   let speedContainer = createDiv().parent(parent).style('display', 'grid').style('grid-template-columns', '1fr 1fr').style('gap', '6px');
@@ -336,7 +334,6 @@ function buildControlsUI(parent) {
     
     btn.mousePressed(() => {
       speedMultiplier = opt.value;
-      // Update button styles
       let allSpeedBtns = speedContainer.elt.querySelectorAll('.speed-btn');
       allSpeedBtns.forEach(b => b.classList.remove('active'));
       btn.elt.classList.add('active');

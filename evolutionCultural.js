@@ -1,5 +1,5 @@
 // Cultural Evolution Module
-// Implements belief dynamics and memetic transmission
+
 
 class CulturalEvolution {
   constructor() {
@@ -29,10 +29,10 @@ class CulturalEvolution {
     agent.beliefStrength *= (1 - this.beliefDecayRate);
     agent.beliefStrength = constrain(agent.beliefStrength, 0.1, 1.0);
     
-    // Social learning: observe successful neighbors
+    // observe successful neighbors
     this.socialLearning(agent, agents);
     
-    // Cultural type conversion - learn behaviors from peers
+    // Learn behaviors from peers
     if (frameCount % 120 === 0) {
       this.culturalConversion(agent, agents);
     }
@@ -68,7 +68,7 @@ class CulturalEvolution {
       resistance *= receiver.genome.stubbornness;
       // Trust threshold affects receptiveness
       if (sender.genome && sender.genome.honestyLevel < receiver.genome.trustThreshold) {
-        resistance *= 1.5; // More resistant to dishonest agents
+        resistance *= 1.5; 
       }
     }
     
@@ -91,14 +91,14 @@ class CulturalEvolution {
       sender.beliefStrength = constrain(sender.beliefStrength + 0.05, 0, 1);
       receiver.beliefStrength *= 0.8; // Receiver's belief weakened
       
-      // Record in cultural memory
+      
       sender.culturalMemory.push({
         target: receiver,
         success: true,
         strength: transferStrength
       });
     } else {
-      // Failed persuasion
+      
       receiver.beliefStrength = constrain(receiver.beliefStrength + 0.02, 0, 1);
     }
     
@@ -107,7 +107,7 @@ class CulturalEvolution {
       sender.culturalMemory.shift();
     }
     
-    // Track conversions
+  
     if (this.colorDistance(oldColor, receiver.color) > 50) {
       receiver.conversionCount++;
     }
