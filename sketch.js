@@ -64,6 +64,9 @@ function setup() {
  
   panels.stats = createPanel('LIVE POPULATION STATS', 20, windowHeight - 180, '220px');
 
+  panels.chart = createPanel('POPULATION DYNAMICS', windowWidth - 450, windowHeight - 480, '430px', '460px');
+  buildChartUI(panels.chart.content);
+
   initializeAgents();
 }
 
@@ -126,6 +129,7 @@ function draw() {
   // Update dynamic UI contents
   updateInspectorUI();
   updateStatsUI();
+  updateChartUI();
 }
 
 function handleAgentSelection() {
@@ -342,7 +346,7 @@ function buildControlsUI(parent) {
 
 function updateHistory() {
   if (frameCount % 5 === 0) {
-    history.push({ h: stats.honest, l: stats.liars });
+    history.push({ h: stats.honest, l: stats.liars, s: stats.stubborn });
     if (history.length > maxHistory) history.shift();
   }
 }
@@ -382,6 +386,242 @@ function updateInspectorUI() {
     ${conversionInfo}
     ${genomeInfo}
   `);
+}
+
+function buildChartUI(parent) {
+  // Create canvas for the chart (increased size with margins for labels)
+  let chartCanvas = createGraphics(390, 400);
+  parent.elt.appendChild(chartCanvas.elt);
+  chartCanvas.elt.id = 'populationChart';
+  chartCanvas.elt.style.borderRadius = '8px';
+  chartCanvas.elt.style.marginTop = '4px';
+  chartCanvas.elt.style.display = 'block';
+  chartCanvas.elt.style.width = '100%';
+  chartCanvas.elt.style.height = 'auto';
+  
+  // Store canvas reference
+  panels.chart.canvas = chartCanvas;
+  
+  // Initial draw
+  chartCanvas.background(15, 15, 20);
+  chartCanvas.fill(255, 255, 255, 100);
+  chartCanvas.textAlign(CENTER, CENTER);
+  chartCanvas.textSize(12);
+  chartCanvas.text('Collecting data...', chartCanvas.width/2, chartCanvas.height/2);
+}
+
+function updateChartUI() {
+  if (!panels.chart || panels.chart.content.style('display') === 'none') return;
+  if (!panels.chart.canvas) return;
+  
+  let canvas = panels.chart.canvas;
+  let w = canvas.width;
+  let h = canvas.height;
+  
+  // Dark background
+  canvas.background(15, 15, 20);
+  
+  // If not enough data yet, show message
+  if (history.length < 1) {
+    canvas.fill(255, 255, 255, 100);
+    canvas.textAlign(CENTER, CENTER);
+    canvas.textSize(12);
+    canvas.text('Collecting data...', w/2, h/2);
+    return;
+  }
+  
+  // Define margins for labels
+  let leftMargin = 35;
+  let topMargin = 35;
+  let rightMargin = 10;
+  let bottomMargin = 20;
+  
+  // Calculate chart area
+  let chartX = leftMargin;
+  let chartY = topMargin;
+  let chartW = w - leftMargin - rightMargin;
+  let chartH = h - topMargin - bottomMargin;
+  
+  // Calculate max value for scaling
+  let maxVal = params.numAgents;
+  
+  // Enable clipping to chart area only
+  canvas.push();
+  canvas.drawingContext.save();
+  canvas.drawingContext.beginPath();
+  canvas.drawingContext.rect(chartX, chartY, chartW, chartH);
+  canvas.drawingContext.clip();
+  
+  // Draw stacked area chart
+  canvas.noStroke();
+  
+  // Draw from back to front: stubborn -> honest -> liars
+  // Each layer stacks on top of previous ones
+  
+  let xScale = chartW / (maxHistory - 1);
+  let yScale = chartH / maxVal;
+  
+  // Layer 1: Stubborn (gray background)
+  canvas.fill(120, 120, 130, 220);
+  canvas.beginShape();
+  canvas.vertex(chartX, chartY + chartH);
+  
+  // Add first point twice for smooth curve start
+  if (history.length > 0) {
+    let x0 = chartX;
+    let stubbornHeight0 = history[0].s * yScale;
+    let honestHeight0 = history[0].h * yScale;
+    let liarsHeight0 = history[0].l * yScale;
+    let y0 = chartY + chartH - stubbornHeight0 - honestHeight0 - liarsHeight0;
+    canvas.curveVertex(x0, y0);
+  }
+  
+  for (let i = 0; i < history.length; i++) {
+    let x = chartX + i * xScale;
+    let stubbornHeight = history[i].s * yScale;
+    let honestHeight = history[i].h * yScale;
+    let liarsHeight = history[i].l * yScale;
+    let y = chartY + chartH - stubbornHeight - honestHeight - liarsHeight;
+    canvas.curveVertex(x, y);
+  }
+  
+  // Add last point twice for smooth curve end
+  if (history.length > 0) {
+    let lastIdx = history.length - 1;
+    let xLast = chartX + lastIdx * xScale;
+    let stubbornHeightLast = history[lastIdx].s * yScale;
+    let honestHeightLast = history[lastIdx].h * yScale;
+    let liarsHeightLast = history[lastIdx].l * yScale;
+    let yLast = chartY + chartH - stubbornHeightLast - honestHeightLast - liarsHeightLast;
+    canvas.curveVertex(xLast, yLast);
+  }
+  
+  canvas.vertex(chartX + (history.length - 1) * xScale, chartY + chartH);
+  canvas.endShape(CLOSE);
+  
+  // Layer 2: Honest (green area)
+  canvas.fill(50, 255, 100, 220);
+  canvas.beginShape();
+  canvas.vertex(chartX, chartY + chartH);
+  
+  // Add first point twice for smooth curve start
+  if (history.length > 0) {
+    let x0 = chartX;
+    let honestHeight0 = history[0].h * yScale;
+    let liarsHeight0 = history[0].l * yScale;
+    let y0 = chartY + chartH - honestHeight0 - liarsHeight0;
+    canvas.curveVertex(x0, y0);
+  }
+  
+  for (let i = 0; i < history.length; i++) {
+    let x = chartX + i * xScale;
+    let honestHeight = history[i].h * yScale;
+    let liarsHeight = history[i].l * yScale;
+    let y = chartY + chartH - honestHeight - liarsHeight;
+    canvas.curveVertex(x, y);
+  }
+  
+  // Add last point twice for smooth curve end
+  if (history.length > 0) {
+    let lastIdx = history.length - 1;
+    let xLast = chartX + lastIdx * xScale;
+    let honestHeightLast = history[lastIdx].h * yScale;
+    let liarsHeightLast = history[lastIdx].l * yScale;
+    let yLast = chartY + chartH - honestHeightLast - liarsHeightLast;
+    canvas.curveVertex(xLast, yLast);
+  }
+  
+  canvas.vertex(chartX + (history.length - 1) * xScale, chartY + chartH);
+  canvas.endShape(CLOSE);
+  
+  // Layer 3: Liars (red foreground)
+  canvas.fill(255, 50, 50, 220);
+  canvas.beginShape();
+  canvas.vertex(chartX, chartY + chartH);
+  
+  // Add first point twice for smooth curve start
+  if (history.length > 0) {
+    let x0 = chartX;
+    let liarsHeight0 = history[0].l * yScale;
+    let y0 = chartY + chartH - liarsHeight0;
+    canvas.curveVertex(x0, y0);
+  }
+  
+  for (let i = 0; i < history.length; i++) {
+    let x = chartX + i * xScale;
+    let liarsHeight = history[i].l * yScale;
+    let y = chartY + chartH - liarsHeight;
+    canvas.curveVertex(x, y);
+  }
+  
+  // Add last point twice for smooth curve end
+  if (history.length > 0) {
+    let lastIdx = history.length - 1;
+    let xLast = chartX + lastIdx * xScale;
+    let liarsHeightLast = history[lastIdx].l * yScale;
+    let yLast = chartY + chartH - liarsHeightLast;
+    canvas.curveVertex(xLast, yLast);
+  }
+  
+  canvas.vertex(chartX + (history.length - 1) * xScale, chartY + chartH);
+  canvas.endShape(CLOSE);
+  
+  // Restore clipping
+  canvas.drawingContext.restore();
+  canvas.pop();
+  
+  // Draw border around chart
+  canvas.noFill();
+  canvas.stroke(255, 255, 255, 40);
+  canvas.strokeWeight(1);
+  canvas.rect(chartX, chartY, chartW, chartH);
+  
+  // Draw horizontal grid lines (more lines for taller chart)
+  canvas.stroke(255, 255, 255, 30);
+  canvas.strokeWeight(1);
+  for (let i = 0; i <= 8; i++) {
+    let y = chartY + (chartH / 8) * i;
+    canvas.line(chartX, y, chartX + chartW, y);
+  }
+  
+  // Draw axis labels on left (whole numbers)
+  canvas.noStroke();
+  canvas.fill(255, 255, 255, 200);
+  canvas.textAlign(RIGHT, CENTER);
+  canvas.textSize(11);
+  for (let i = 0; i <= 8; i++) {
+    let val = Math.round(maxVal - (maxVal / 8) * i);
+    let y = chartY + (chartH / 8) * i;
+    canvas.text(val, chartX - 8, y);
+  }
+  
+  // Draw legend at the top
+  let legendX = chartX + 10;
+  let legendY = 10;
+  let legendSpacing = 90;
+  
+  // Stubborn
+  canvas.noStroke();
+  canvas.fill(120, 120, 130);
+  canvas.rect(legendX, legendY, 14, 14, 2);
+  canvas.fill(255, 255, 255, 220);
+  canvas.textAlign(LEFT, CENTER);
+  canvas.textSize(10);
+  canvas.text('Stubborn', legendX + 18, legendY + 7);
+  
+  // Honest
+  legendX += legendSpacing;
+  canvas.fill(50, 255, 100);
+  canvas.rect(legendX, legendY, 14, 14, 2);
+  canvas.fill(255, 255, 255, 220);
+  canvas.text('Honest', legendX + 18, legendY + 7);
+  
+  // Liars
+  legendX += legendSpacing;
+  canvas.fill(255, 50, 50);
+  canvas.rect(legendX, legendY, 14, 14, 2);
+  canvas.fill(255, 255, 255, 220);
+  canvas.text('Liars', legendX + 18, legendY + 7);
 }
 
 function updateStatsUI() {

@@ -56,6 +56,19 @@ canvas { display: block; }
   padding: 0;
 }
 
+/* Population Chart Canvas Styling */
+#populationChart {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0;
+  padding: 0;
+  box-shadow: 
+    inset 2px 2px 6px rgba(0, 0, 0, 0.3),
+    inset -2px -2px 6px rgba(50, 50, 60, 0.1);
+}
+
 /* Neumorphic Sunken Input */
 .manual-input {
   width: 55px;
